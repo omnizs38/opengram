@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop">
+    <id>org.opengram.desktop</id>
+    <metadata_license>CC0-1.0</metadata_license>
+    <project_license>GPL-3.0</project_license>
+    <name>opengram</name>
+    <summary>Free and minimalistic Telegram client for desktop</summary>
+    <description>
+        <p>opengram is a free, minimalistic desktop client for Telegram, based on Telegram Desktop with a cleaner interface and fewer distractions.</p>
+        <p>It uses the official Telegram servers and protocol, requires no opengram account, and keeps your data out of third-party services.</p>
+        <p>opengram is an independent fork. It is not affiliated with, endorsed by, or supported by Telegram FZ-LLC, and it does not provide server-side Telegram Premium features, invisible mode, or end-to-end encryption for ordinary cloud chats.</p>
+    </description>
+    <categories>
+        <category>Network</category>
+        <category>InstantMessaging</category>
+    </categories>
+    <developer id="org.opengram"><name>opengram</name></developer>
+    <url type="homepage">https://github.com/omnizs38/opengram</url>
+    <url type="bugtracker">https://github.com/omnizs38/opengram/issues</url>
+    <url type="vcs-browser">https://github.com/omnizs38/opengram</url>
+    <launchable type="desktop-id">org.opengram.desktop.desktop</launchable>
+    <provides>
+        <binary>Telegram</binary>
+        <dbus type="session">org.opengram.desktop</dbus>
+        <mediatype>x-scheme-handler/tg</mediatype>
+        <mediatype>x-scheme-handler/tonsite</mediatype>
+        <mediatype>x-scheme-handler/ton</mediatype>
+    </provides>
+</component>

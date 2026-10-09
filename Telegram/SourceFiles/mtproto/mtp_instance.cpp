@@ -942,9 +942,8 @@ void Instance::Private::configLoadDone(const MTPConfig &result) {
 	Lang::CurrentCloudManager().setCurrentVersions(
 		data.vlang_pack_version().value_or_empty(),
 		data.vbase_lang_pack_version().value_or_empty());
-	if (const auto prefix = data.vautoupdate_url_prefix()) {
-		Local::writeAutoupdatePrefix(qs(*prefix));
-	}
+	// opengram has no update channel of its own, so the update URL prefix is
+	// never taken from Telegram's servers.
 
 	_configExpiresAt = crl::now()
 		+ (data.vexpires().v - base::unixtime::now()) * crl::time(1000);

@@ -1,9 +1,9 @@
-#define MyAppShortName "Telegram"
-#define MyAppName "Telegram Desktop"
-#define MyAppPublisher "Telegram FZ-LLC"
-#define MyAppURL "https://desktop.telegram.org"
+#define MyAppShortName "opengram"
+#define MyAppName "opengram"
+#define MyAppPublisher "opengram"
+#define MyAppURL "https://github.com/omnizs38/opengram"
 #define MyAppExeName "Telegram.exe"
-#define MyAppId "53F49750-6209-4FBF-9CA8-7A333C87D1ED"
+#define MyAppId "{9681EDF6-568B-473C-8F6D-C87038634688}"
 #define CurrentYear GetDateTimeString('yyyy','','')
 
 [Setup]

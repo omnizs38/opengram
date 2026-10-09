@@ -199,7 +199,7 @@ def assemble(builds, destination, toolchain, target, configuration):
             shutil.move(strings, nested / strings.name)
         if info['LSMinimumSystemVersion'] != '10.13':
             raise RuntimeError('The universal app lost its 10.13 deployment target.')
-        identifier = 'org.telegram.desktop' if target == 'macstore' else 'com.tdesktop.Telegram'
+        identifier = 'org.opengram.desktop'
         if info['CFBundleIdentifier'] != identifier or info['CFBundleExecutable'] != binary_name:
             raise RuntimeError('The app bundle does not match the selected distribution target.')
         resources = ['Contents/MacOS/' + binary_name,

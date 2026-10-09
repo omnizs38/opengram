@@ -555,7 +555,9 @@ const QString &readAutoupdatePrefixRaw() {
 			return AutoupdatePrefix(value);
 		}
 	}
-	return AutoupdatePrefix("https://td.telegram.org");
+	// opengram has no update server: this address serves no Telegram Desktop
+	// update feed, so the inherited updater can never download Telegram builds.
+	return AutoupdatePrefix("https://github.com/omnizs38/opengram/releases");
 }
 
 void writeAutoupdatePrefix(const QString &prefix) {
