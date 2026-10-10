@@ -1,0 +1,182 @@
+name: Build Windows
+
+# Manual only for now: a tag push should not start a five hour build before the
+# pipeline is known to work. Add
+#
+#   push:
+#     tags: ['v*']
+#
+# once a release has gone through this successfully.
+on:
+  workflow_dispatch:
+
+env:
+  # Bump this to throw away the cached Libraries directory.
+  CACHE_VERSION: 1
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Check out opengram
+        uses: actions/checkout@v4
+        with:
+          # cmake/ is a submodule that holds run_cmake.py, and the build fails
+          # without it, so submodules are mandatory here.
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Free disk space
+        shell: pwsh
+        run: |
+          function Show-FreeSpace($label) {
+            $free = (Get-PSDrive C).Free / 1GB
+            Write-Host ("{0}: {1:N1} GB free on C:" -f $label, $free)
+          }
+          Show-FreeSpace 'before'
+          $targets = @(
+            'C:\Android',
+            'C:\Program Files\Android',
+            'C:\Program Files (x86)\Android',
+            'C:\Program Files\Java',
+            'C:\Program Files\Eclipse Adoptium',
+            'C:\hostedtoolcache\Java',
+            'C:\hostedtoolcache\go',
+            'C:\hostedtoolcache\Ruby',
+            'C:\hostedtoolcache\PyPy',
+            'C:\Program Files\dotnet',
+            'C:\Program Files\Haskell'
+          )
+          # The image may carry more than one Visual Studio. vswhere below picks
+          # the newest one, so an older install is only dead weight.
+          if (Test-Path 'C:\Program Files\Microsoft Visual Studio\18') {
+            $targets += 'C:\Program Files\Microsoft Visual Studio\2022'
+          }
+          foreach ($target in $targets) {
+            if (Test-Path $target) {
+              Write-Host "removing $target"
+              Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $target
+            }
+          }
+          Show-FreeSpace 'after'
+
+      - name: Resolve build paths and toolset
+        id: paths
+        shell: pwsh
+        run: |
+          $build = Split-Path "${{ github.workspace }}" -Parent
+          $repo = Split-Path "${{ github.workspace }}" -Leaf
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          if (-not $vs) {
+            throw 'No Visual Studio installation with C++ tools was found.'
+          }
+          "build=$build" >> $env:GITHUB_OUTPUT
+          "repo=$repo" >> $env:GITHUB_OUTPUT
+          "vs=$vs" >> $env:GITHUB_OUTPUT
+          Write-Host "BuildPath:      $build"
+          Write-Host "Repository dir: $repo"
+          Write-Host "Visual Studio:  $vs"
+          Write-Host 'MSVC toolsets:'
+          Get-ChildItem "$vs\VC\Tools\MSVC" -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "  $($_.Name)" }
+          Write-Host 'Windows SDKs:'
+          Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Include" -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "  $($_.Name)" }
+
+      - name: Check API credentials
+        shell: pwsh
+        env:
+          API_ID: ${{ secrets.TDESKTOP_API_ID }}
+          API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
+        run: |
+          # Telegram's built-in test credentials are deliberately not used here:
+          # a client built with them cannot log users in.
+          if (-not $env:API_ID -or -not $env:API_HASH) {
+            throw 'Set the repository secrets TDESKTOP_API_ID and TDESKTOP_API_HASH (Settings -> Secrets and variables -> Actions).'
+          }
+          Write-Host "api_id length: $($env:API_ID.Length), api_hash length: $($env:API_HASH.Length)"
+
+      - name: Cache prepared libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.paths.outputs.build }}\Libraries
+            ${{ steps.paths.outputs.build }}\ThirdParty
+          key: win64-${{ env.CACHE_VERSION }}-${{ hashFiles('Telegram/build/prepare/prepare.py', '.gitmodules') }}
+          restore-keys: |
+            win64-${{ env.CACHE_VERSION }}-
+
+      - name: Prepare libraries (Qt and third party)
+        shell: cmd
+        env:
+          VS_PATH: ${{ steps.paths.outputs.vs }}
+          BUILD_PATH: ${{ steps.paths.outputs.build }}
+          REPO: ${{ steps.paths.outputs.repo }}
+        run: |
+          rem run_cmake.py forces -T v143, so the environment has to match it.
+          call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat" -vcvars_ver=14.44
+          if errorlevel 1 (
+            echo Falling back to the default toolset of this Visual Studio.
+            call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+          )
+          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat"
+          if errorlevel 1 exit /b 1
+
+      - name: Report library size
+        shell: pwsh
+        run: |
+          $build = "${{ steps.paths.outputs.build }}"
+          Write-Host ("C: {0:N1} GB free" -f ((Get-PSDrive C).Free / 1GB))
+          foreach ($dir in 'Libraries', 'ThirdParty') {
+            $path = Join-Path $build $dir
+            if (Test-Path $path) {
+              $sum = (Get-ChildItem -Recurse -Force $path |
+                Measure-Object -Property Length -Sum).Sum / 1GB
+              Write-Host ("{0}: {1:N2} GB" -f $dir, $sum)
+            }
+          }
+
+      - name: Build opengram
+        shell: cmd
+        env:
+          VS_PATH: ${{ steps.paths.outputs.vs }}
+          BUILD_PATH: ${{ steps.paths.outputs.build }}
+          REPO: ${{ steps.paths.outputs.repo }}
+          API_ID: ${{ secrets.TDESKTOP_API_ID }}
+          API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
+        run: |
+          call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat" -vcvars_ver=14.44
+          if errorlevel 1 (
+            echo Falling back to the default toolset of this Visual Studio.
+            call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+          )
+          cd /d "%BUILD_PATH%\%REPO%\Telegram"
+          call configure.bat x64 -D TDESKTOP_API_ID=%API_ID% -D TDESKTOP_API_HASH=%API_HASH%
+          if errorlevel 1 exit /b 1
+          cmake --build "%BUILD_PATH%\%REPO%\out" --config Release --parallel
+          if errorlevel 1 exit /b 1
+
+      - name: Show the built files
+        shell: pwsh
+        run: |
+          $release = "${{ steps.paths.outputs.build }}\${{ steps.paths.outputs.repo }}\out\Release"
+          if (Test-Path $release) {
+            Get-ChildItem $release -Filter *.exe |
+              ForEach-Object { Write-Host ("{0}  {1:N0} bytes" -f $_.Name, $_.Length) }
+          } else {
+            Write-Host "No $release directory, listing out/ instead:"
+            Get-ChildItem "${{ steps.paths.outputs.build }}\${{ steps.paths.outputs.repo }}\out" -ErrorAction SilentlyContinue |
+              ForEach-Object { Write-Host "  $($_.Name)" }
+          }
+
+      - name: Upload opengram.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengram-windows-x64
+          path: ${{ steps.paths.outputs.build }}\${{ steps.paths.outputs.repo }}\out\Release\opengram.exe
+          if-no-files-found: error
