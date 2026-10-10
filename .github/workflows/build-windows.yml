@@ -12,7 +12,8 @@ on:
 
 env:
   # Bump this to throw away the cached Libraries directory.
-  CACHE_VERSION: 1
+  # 2: Qt is built release-only now, so the old debug+release cache is useless.
+  CACHE_VERSION: 2
 
 jobs:
   # Qt is built from source here and that is by far the longest stage, so it
@@ -130,7 +131,9 @@ jobs:
             echo Falling back to the default toolset of this Visual Studio.
             call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
           )
-          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat"
+          rem skip-debug: we only ever ship Release builds, so the static
+          rem debug Qt is dead weight and roughly doubles this job.
+          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat" skip-debug
           if errorlevel 1 exit /b 1
 
       - name: Report library size

@@ -61,6 +61,7 @@ usedPrefix = os.path.realpath(os.path.join(libsDir, 'local'))
 optionsList = [
     'qt6',
     'skip-release',
+    'skip-debug',
     'build-stackwalk',
     'qt-asserts',
 ]
@@ -318,6 +319,8 @@ def filterByPlatform(commands):
                     continue
             if 'asserts' in scopes:
                 inscope = inscope and 'qt-asserts' in options
+            if 'skipdebug' in scopes:
+                inscope = inscope and 'skip-debug' in options
             skip = inscope if m.group(1) == '!' else not inscope
         elif not skip and not re.match(r'\s*#', command):
             if m and m.group(2) == 'version':
@@ -1726,6 +1729,8 @@ win:
     SET ASSERTS=
 release:
     SET CONFIGURATIONS=-debug-and-release
+win_skipdebug:
+    SET CONFIGURATIONS=-release
 win_asserts:
     SET ASSERTS=-force-asserts
 win:
