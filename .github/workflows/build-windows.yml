@@ -1,6 +1,6 @@
 name: Build Windows
 
-# Manual only for now: a tag push should not start a five hour build before the
+# Manual only for now: a tag push should not start a multi hour build before the
 # pipeline is known to work. Add
 #
 #   push:
@@ -15,7 +15,10 @@ env:
   CACHE_VERSION: 1
 
 jobs:
-  windows:
+  # Qt is built from source here and that is by far the longest stage, so it
+  # gets a job of its own: the six hour limit applies per job, and a failure in
+  # the app build below does not throw away the prepared libraries.
+  prepare:
     runs-on: windows-latest
     timeout-minutes: 350
 
@@ -32,8 +35,12 @@ jobs:
         shell: pwsh
         run: |
           function Show-FreeSpace($label) {
-            $free = (Get-PSDrive C).Free / 1GB
-            Write-Host ("{0}: {1:N1} GB free on C:" -f $label, $free)
+            foreach ($drive in 'C', 'D') {
+              $d = Get-PSDrive $drive -ErrorAction SilentlyContinue
+              if ($d) {
+                Write-Host ("{0} {1}: {2:N1} GB free" -f $label, $drive, ($d.Free / 1GB))
+              }
+            }
           }
           Show-FreeSpace 'before'
           $targets = @(
@@ -94,14 +101,13 @@ jobs:
           API_ID: ${{ secrets.TDESKTOP_API_ID }}
           API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
         run: |
-          # Telegram's built-in test credentials are deliberately not used here:
-          # a client built with them cannot log users in.
+          # Checked here as well, so that a missing secret does not waste the
+          # hours this job spends building Qt.
           if (-not $env:API_ID -or -not $env:API_HASH) {
             throw 'Set the repository secrets TDESKTOP_API_ID and TDESKTOP_API_HASH (Settings -> Secrets and variables -> Actions).'
           }
-          Write-Host "api_id length: $($env:API_ID.Length), api_hash length: $($env:API_HASH.Length)"
 
-      - name: Cache prepared libraries
+      - name: Restore prepared libraries
         uses: actions/cache@v4
         with:
           path: |
@@ -131,7 +137,12 @@ jobs:
         shell: pwsh
         run: |
           $build = "${{ steps.paths.outputs.build }}"
-          Write-Host ("C: {0:N1} GB free" -f ((Get-PSDrive C).Free / 1GB))
+          foreach ($drive in 'C', 'D') {
+            $d = Get-PSDrive $drive -ErrorAction SilentlyContinue
+            if ($d) {
+              Write-Host ("{0}: {1:N1} GB free" -f $drive, ($d.Free / 1GB))
+            }
+          }
           foreach ($dir in 'Libraries', 'ThirdParty') {
             $path = Join-Path $build $dir
             if (Test-Path $path) {
@@ -140,6 +151,82 @@ jobs:
               Write-Host ("{0}: {1:N2} GB" -f $dir, $sum)
             }
           }
+
+  build:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Check out opengram
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Free disk space
+        shell: pwsh
+        run: |
+          $targets = @(
+            'C:\Android',
+            'C:\Program Files\Android',
+            'C:\Program Files (x86)\Android',
+            'C:\Program Files\Java',
+            'C:\Program Files\Eclipse Adoptium',
+            'C:\hostedtoolcache\Java',
+            'C:\hostedtoolcache\go',
+            'C:\hostedtoolcache\Ruby',
+            'C:\hostedtoolcache\PyPy',
+            'C:\Program Files\dotnet',
+            'C:\Program Files\Haskell'
+          )
+          if (Test-Path 'C:\Program Files\Microsoft Visual Studio\18') {
+            $targets += 'C:\Program Files\Microsoft Visual Studio\2022'
+          }
+          foreach ($target in $targets) {
+            if (Test-Path $target) {
+              Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $target
+            }
+          }
+
+      - name: Resolve build paths and toolset
+        id: paths
+        shell: pwsh
+        run: |
+          $build = Split-Path "${{ github.workspace }}" -Parent
+          $repo = Split-Path "${{ github.workspace }}" -Leaf
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          if (-not $vs) {
+            throw 'No Visual Studio installation with C++ tools was found.'
+          }
+          "build=$build" >> $env:GITHUB_OUTPUT
+          "repo=$repo" >> $env:GITHUB_OUTPUT
+          "vs=$vs" >> $env:GITHUB_OUTPUT
+
+      - name: Check API credentials
+        shell: pwsh
+        env:
+          API_ID: ${{ secrets.TDESKTOP_API_ID }}
+          API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
+        run: |
+          # Telegram's built-in test credentials are deliberately not used here:
+          # a client built with them cannot log users in.
+          if (-not $env:API_ID -or -not $env:API_HASH) {
+            throw 'Set the repository secrets TDESKTOP_API_ID and TDESKTOP_API_HASH (Settings -> Secrets and variables -> Actions).'
+          }
+
+      - name: Restore prepared libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.paths.outputs.build }}\Libraries
+            ${{ steps.paths.outputs.build }}\ThirdParty
+          key: win64-${{ env.CACHE_VERSION }}-${{ hashFiles('Telegram/build/prepare/prepare.py', '.gitmodules') }}
+          restore-keys: |
+            win64-${{ env.CACHE_VERSION }}-
 
       - name: Build opengram
         shell: cmd
