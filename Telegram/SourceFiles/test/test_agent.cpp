@@ -159,7 +159,7 @@ auto AppNapActivity = (void*)nullptr;
 	const auto reason = reinterpret_cast<SendString>(objc_msgSend)(
 		objc_getClass("NSString"),
 		sel_registerName("stringWithUTF8String:"),
-		"Telegram Desktop -testagent run");
+		"opengram -testagent run");
 	const auto activity = reinterpret_cast<SendBegin>(objc_msgSend)(
 		info,
 		sel_registerName("beginActivityWithOptions:reason:"),

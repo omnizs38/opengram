@@ -43,6 +43,13 @@ if (NOT DESKTOP_APP_USE_PACKAGED AND WIN32)
     set(Python3_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/../ThirdParty/python/Scripts/python)
 endif()
 
+# opengram: crash reports are kept, but nothing is ever sent automatically.
+# After a crash the app shows a window where the user can copy the log and
+# open a GitHub issue by themselves (see core/crash_report_window.cpp).
+# The option is forced OFF here, before it is declared, so that the crash
+# handler, the local dump and that window are available in every build.
+set(DESKTOP_APP_DISABLE_CRASH_REPORTS OFF CACHE BOOL "Disable crash report generation." FORCE)
+
 include(cmake/variables.cmake)
 include(cmake/nice_target_sources.cmake)
 include(cmake/target_compile_options_if_exists.cmake)

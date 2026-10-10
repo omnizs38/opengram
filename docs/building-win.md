@@ -60,7 +60,7 @@ For `win64` (64-bit):
 
 * Open ***BuildPath*\\tdesktop\\out\\Telegram.slnx** in Visual Studio 2026
 * Select Telegram project and press Build > Build Telegram (Debug and Release configurations)
-* The result Telegram.exe will be located in **D:\TBuild\tdesktop\out\Debug** (and **Release**)
+* The result opengram.exe will be located in **D:\TBuild\tdesktop\out\Debug** (and **Release**)
 
 ### Qt Visual Studio Tools
 

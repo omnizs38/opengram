@@ -495,56 +495,8 @@ using Order = std::vector<QString>;
 	};
 }
 
-void SendAppLog(
-		not_null<::Main::Session*> session,
-		const QString &type,
-		const MTPJSONValue &data) {
-	const auto now = double(base::unixtime::now())
-		+ (QTime::currentTime().msec() / 1000.);
-	session->api().request(MTPhelp_SaveAppLog(
-		MTP_vector<MTPInputAppEvent>(1, MTP_inputAppEvent(
-			MTP_double(now),
-			MTP_string(type),
-			MTP_long(0),
-			data
-		))
-	)).send();
-}
-
 [[nodiscard]] QString ResolveRef(const QString &ref) {
 	return ref.isEmpty() ? "settings" : ref;
-}
-
-void SendScreenShow(
-		not_null<Window::SessionController*> controller,
-		const std::vector<QString> &order,
-		const QString &ref) {
-	auto list = QVector<MTPJSONValue>();
-	list.reserve(order.size());
-	for (const auto &element : order) {
-		list.push_back(MTP_jsonString(MTP_string(element)));
-	}
-	auto values = QVector<MTPJSONObjectValue>{
-		MTP_jsonObjectValue(
-			MTP_string("premium_promo_order"),
-			MTP_jsonArray(MTP_vector<MTPJSONValue>(std::move(list)))),
-		MTP_jsonObjectValue(
-			MTP_string("source"),
-			MTP_jsonString(MTP_string(ResolveRef(ref)))),
-	};
-	const auto data = MTP_jsonObject(
-		MTP_vector<MTPJSONObjectValue>(std::move(values)));
-	SendAppLog(
-		&controller->session(),
-		"premium.promo_screen_show",
-		data);
-}
-
-void SendScreenAccept(not_null<Window::SessionController*> controller) {
-	SendAppLog(
-		&controller->session(),
-		"premium.promo_screen_accept",
-		MTP_jsonNull());
 }
 
 class EmojiStatusTopBar final {
@@ -1142,7 +1094,6 @@ void SetupSubscriptionOptions(
 void AddSummaryPremium(
 		not_null<Ui::VerticalLayout*> content,
 		not_null<Window::SessionController*> controller,
-		const QString &ref,
 		Fn<void(PremiumFeature)> buttonCallback,
 		std::shared_ptr<PremiumState> state) {
 	const auto &stDefault = st::settingsButton;
@@ -1259,8 +1210,6 @@ void AddSummaryPremium(
 			}
 			processEntry(key, it->second);
 		}
-
-		SendScreenShow(controller, mtpOrder, ref);
 	}
 
 	content->resizeToWidth(content->height());
@@ -1319,7 +1268,6 @@ void BuildPremiumSectionContent(
 			AddSummaryPremium(
 				ctx.container,
 				controller,
-				state->ref,
 				std::move(buttonCallback),
 				state);
 
@@ -2052,7 +2000,6 @@ not_null<Ui::GradientButton*> CreateSubscribeButton(
 					.botStartAutoSubmit = true,
 				}));
 		} else {
-			SendScreenAccept(window);
 			StartPremiumPayment(window, computeRef());
 		}
 	});

@@ -483,8 +483,8 @@ void AutostartToggle(bool enabled, Fn<void(bool)> done) {
 		silent,
 		FOLDERID_Startup,
 		L"-autostart",
-		L"Telegram autorun link.\n"
-		"You can disable autorun in Telegram settings.");
+		L"opengram autorun link.\n"
+		"You can disable autorun in opengram settings.");
 	if (done) {
 		done(enabled && success);
 	}
@@ -798,8 +798,8 @@ void psSendToMenu(bool send, bool silent) {
 		silent,
 		FOLDERID_SendTo,
 		L"--",
-		L"Telegram send to link.\n"
-		"You can disable send to menu item in Telegram settings.");
+		L"opengram send to link.\n"
+		"You can disable send to menu item in opengram settings.");
 }
 
 // Stub while we still support Windows 7.

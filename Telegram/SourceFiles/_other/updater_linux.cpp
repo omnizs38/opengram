@@ -292,7 +292,7 @@ bool update() {
 						writeLog("Error: bad update, has Updater! '%s' equal '%s'", tofname.c_str(), updaterName.c_str());
 						delFolder();
 						return false;
-					} else if (equal(tofname, exePath + "Telegram") && exeName != "Telegram") {
+					} else if (equal(tofname, exePath + "opengram") && exeName != "opengram") {
 						string fullBinaryPath = exePath + exeName;
 						writeLog("Target binary found: '%s', changing to '%s'", tofname.c_str(), fullBinaryPath.c_str());
 						tofname = fullBinaryPath;
@@ -422,7 +422,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	if (exeName.empty() || exeName.find('/') != string::npos) {
-		exeName = "Telegram";
+		exeName = "opengram";
 	}
 	openLog();
 
@@ -528,7 +528,7 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 
-		writeLog("Executed Telegram, closing log and quitting..");
+		writeLog("Executed opengram, closing log and quitting..");
 	}
 
 	closeLog();

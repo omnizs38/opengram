@@ -1,5 +1,5 @@
-name: telegram-desktop
-adopt-info: telegram
+name: opengram
+adopt-info: opengram
 icon: Telegram/Resources/art/icon512@2x.png
 
 base: core24
@@ -8,11 +8,11 @@ confinement: strict
 compression: lzo
 
 apps:
-  telegram-desktop:
-    command: usr/bin/telegram-desktop
+  opengram:
+    command: usr/bin/opengram
     common-id: org.opengram.desktop
     desktop: usr/share/applications/org.opengram.desktop.desktop
-    autostart: telegram-desktop_telegram-desktop.desktop
+    autostart: opengram_opengram.desktop
     extensions: [gnome]
     plugs:
       - audio-playback
@@ -34,7 +34,7 @@ layout:
     type: tmpfs
 
 parts:
-  telegram:
+  opengram:
     plugin: cmake
     source: .
     source-type: git
@@ -52,8 +52,10 @@ parts:
     cmake-parameters:
       - -DCMAKE_BUILD_TYPE=Release
       - -DCMAKE_INSTALL_PREFIX=/usr
-      - -DTDESKTOP_API_ID=611335
-      - -DTDESKTOP_API_HASH=d524b414d21f4d37f08684c1df41ac9c
+      # Telegram's official api_id/api_hash were removed with this fork:
+      # they belong to Telegram FZ-LLC and must not be shipped here.
+      # Supply your own before packing, and expect a hard configure
+      # failure while they are missing.
     override-pull: |
       craftctl default
 
@@ -70,8 +72,7 @@ parts:
       craftctl set version="$version"
     override-build: |
       craftctl default
-      "$CRAFT_PART_SRC/Telegram/build/minidebug.sh" "$CRAFT_PART_INSTALL/usr/bin/Telegram"
-      mv "$CRAFT_PART_INSTALL"/usr/bin/{Telegram,telegram-desktop}
+      "$CRAFT_PART_SRC/Telegram/build/minidebug.sh" "$CRAFT_PART_INSTALL/usr/bin/opengram"
 
       APP_ID=org.opengram.desktop
       sed -i "s/^Icon=$APP_ID$/Icon=snap.$CRAFT_PROJECT_NAME./g" "$CRAFT_PART_INSTALL/usr/share/applications/$APP_ID.desktop"

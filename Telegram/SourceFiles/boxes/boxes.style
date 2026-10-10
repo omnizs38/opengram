@@ -146,6 +146,11 @@ themeWarningHeight: 150px;
 themeWarningTextTop: 60px;
 
 aboutWidth: 390px;
+aboutTitleLink: LinkButton(defaultLinkButton) {
+	color: boxTitleFg;
+	overColor: windowActiveTextFg;
+	font: font(16px semibold);
+}
 aboutVersionLink: LinkButton(defaultLinkButton) {
 	color: windowSubTextFg;
 	overColor: windowSubTextFg;

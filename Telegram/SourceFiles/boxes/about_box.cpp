@@ -35,23 +35,22 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace {
 
+constexpr auto kProjectUrl = "https://github.com/omnizs38/opengram";
+constexpr auto kLicenseUrl = "https://github.com/omnizs38/opengram/blob/opengram/LICENSE";
+
 rpl::producer<TextWithEntities> Text1() {
-	return tr::lng_about_text1(
-		lt_api_link,
-		tr::lng_about_text1_api(tr::url(u"https://core.telegram.org/api"_q)),
-		tr::marked);
+	return rpl::single(TextWithEntities{
+		u"opengram is a free, open-source Telegram client, a cleaner and "
+		"more minimal fork of Telegram Desktop."_q,
+	});
 }
 
 rpl::producer<TextWithEntities> Text2() {
 	return tr::lng_about_text2(
 		lt_gpl_link,
-		rpl::single(tr::link(
-			"GNU GPL",
-			"https://github.com/telegramdesktop/tdesktop/blob/master/LICENSE")),
+		rpl::single(tr::link("GNU GPL", kLicenseUrl)),
 		lt_github_link,
-		rpl::single(tr::link(
-			"GitHub",
-			"https://github.com/telegramdesktop/tdesktop")),
+		rpl::single(tr::link("GitHub", kProjectUrl)),
 		tr::marked);
 }
 
@@ -65,9 +64,20 @@ rpl::producer<TextWithEntities> Text3() {
 } // namespace
 
 void AboutBox(not_null<Ui::GenericBox*> box) {
-	box->setTitle(u"Telegram Desktop"_q);
-
 	auto layout = box->verticalLayout();
+
+	// opengram: the client name itself opens the project page on GitHub.
+	const auto name = layout->add(
+		object_ptr<Ui::LinkButton>(
+			box,
+			u"opengram"_q,
+			st::aboutTitleLink),
+		QMargins(
+			st::boxRowPadding.left(),
+			st::boxPadding.top() + st::aboutTopSkip,
+			st::boxRowPadding.right(),
+			0));
+	name->setClickedCallback([=] { File::OpenUrl(kProjectUrl); });
 
 	const auto version = layout->add(
 		object_ptr<Ui::LinkButton>(
@@ -83,35 +93,7 @@ void AboutBox(not_null<Ui::GenericBox*> box) {
 			st::boxRowPadding.right(),
 			st::boxRowPadding.bottom()));
 	version->setClickedCallback([=] {
-		if (cRealAlphaVersion()) {
-			auto url = u"https://tdesktop.com/"_q;
-			if (Platform::IsWindows32Bit()) {
-				url += u"win/%1.zip"_q;
-			} else if (Platform::IsWindows64Bit()) {
-				url += u"win64/%1.zip"_q;
-			} else if (Platform::IsWindowsARM64()) {
-				url += u"winarm/%1.zip"_q;
-			} else if (Platform::IsMac()) {
-				url += u"mac/%1.zip"_q;
-			} else if (Platform::IsLinux()) {
-				url += u"linux/%1.tar.xz"_q;
-			} else {
-				Unexpected("Platform value.");
-			}
-			url = url.arg(u"talpha%1_%2"_q
-				.arg(cRealAlphaVersion())
-				.arg(Core::countAlphaVersionSignature(cRealAlphaVersion())));
-
-			QGuiApplication::clipboard()->setText(url);
-
-			box->getDelegate()->show(
-				Ui::MakeInformBox(
-					"The link to the current private alpha "
-					"version of Telegram Desktop was copied "
-					"to the clipboard."));
-		} else {
-			File::OpenUrl(Core::App().changelogLink());
-		}
+		File::OpenUrl(Core::App().changelogLink());
 	});
 
 	Ui::AddSkip(layout, st::aboutTopSkip);

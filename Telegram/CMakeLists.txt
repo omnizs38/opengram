@@ -2535,7 +2535,7 @@ endif()
 if (build_macstore)
     set(bundle_identifier "org.opengram.desktop")
     set(bundle_entitlements "Telegram Lite.entitlements")
-    set(output_name "Telegram Lite")
+    set(output_name "opengram Lite")
     target_link_options(Telegram
     PRIVATE
         -F${libs_loc}/breakpad/src/client/mac/build/Release
@@ -2556,7 +2556,7 @@ else()
         set(bundle_identifier "org.opengram.desktop")
     endif()
     set(bundle_entitlements "Telegram.entitlements")
-    set(output_name "Telegram")
+    set(output_name "opengram")
 endif()
 
 if (CMAKE_GENERATOR STREQUAL Xcode)
@@ -2595,14 +2595,14 @@ target_compile_definitions(Telegram
 PRIVATE
     TDESKTOP_API_ID=${TDESKTOP_API_ID}
     TDESKTOP_API_HASH=${TDESKTOP_API_HASH}
-    G_LOG_DOMAIN="Telegram"
+    G_LOG_DOMAIN="opengram"
 )
 
 get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if (APPLE
     OR is_multi_config
     OR NOT CMAKE_EXECUTABLE_SUFFIX STREQUAL ""
-    OR NOT "${output_name}" STREQUAL "Telegram")
+    OR NOT "${output_name}" STREQUAL "opengram")
     set(output_folder ${CMAKE_BINARY_DIR})
 else()
     set(output_folder ${CMAKE_BINARY_DIR}/bin)

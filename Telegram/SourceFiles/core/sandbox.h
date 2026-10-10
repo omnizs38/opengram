@@ -145,7 +145,6 @@ private:
 
 	std::unique_ptr<UpdateChecker> _updateChecker;
 
-	QByteArray _lastCrashDump;
 	MTP::ProxyData _sandboxProxy;
 
 	rpl::event_stream<> _widgetUpdateRequests;

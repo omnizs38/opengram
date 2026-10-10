@@ -231,7 +231,7 @@ bool Launcher::launchUpdater(UpdaterLaunch action) {
 			nullptr,
 			&error);
 		if (!result) {
-			ReportLaunchError(u"Could not relaunch Telegram: %1"_q.arg(
+			ReportLaunchError(u"Could not relaunch opengram: %1"_q.arg(
 				QString::fromUtf8(error.message_().c_str())));
 		}
 		return result;

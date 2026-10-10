@@ -471,7 +471,7 @@ void Sandbox::socketError(QLocalSocket::LocalSocketError e) {
 	}
 
 	if (e == QLocalSocket::ServerNotFoundError) {
-		LOG(("This is the only instance of Telegram, starting server and app..."));
+		LOG(("This is the only instance of opengram, starting server and app..."));
 	} else {
 		LOG(("Socket connect error %1, starting server and app...").arg(e));
 	}
@@ -530,15 +530,7 @@ void Sandbox::singleInstanceChecked() {
 			}
 			return;
 		}
-		_lastCrashDump = crashdump;
-		auto window = new LastCrashedWindow(
-			_lastCrashDump,
-			[=] { launchApplication(); });
-		window->proxyChanges(
-		) | rpl::on_next([=](MTP::ProxyData &&proxy) {
-			_sandboxProxy = std::move(proxy);
-			refreshGlobalProxy();
-		}, window->lifetime());
+		new LastCrashedWindow(crashdump, [=] { launchApplication(); });
 	});
 }
 

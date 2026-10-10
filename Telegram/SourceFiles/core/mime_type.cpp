@@ -66,7 +66,7 @@ QStringList MimeType::globPatterns() const {
 QString MimeType::filterString() const {
 	switch (_type) {
 	case Known::WebP: return u"WebP image (*.webp)"_q;
-	case Known::Tgs: return u"Telegram sticker (*.tgs)"_q;
+	case Known::Tgs: return u"opengram sticker (*.tgs)"_q;
 	case Known::Tgv: return u"Wallpaper pattern (*.tgv)"_q;
 	case Known::TDesktopTheme: return u"Theme files (*.tdesktop-theme)"_q;
 	case Known::TDesktopPalette: return u"Palette files (*.tdesktop-palette)"_q;

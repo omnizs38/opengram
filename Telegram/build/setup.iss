@@ -2,7 +2,7 @@
 #define MyAppName "opengram"
 #define MyAppPublisher "opengram"
 #define MyAppURL "https://github.com/omnizs38/opengram"
-#define MyAppExeName "Telegram.exe"
+#define MyAppExeName "opengram.exe"
 #define MyAppId "{9681EDF6-568B-473C-8F6D-C87038634688}"
 #define CurrentYear GetDateTimeString('yyyy','','')
 
@@ -24,7 +24,7 @@ AllowNoIcons=yes
 OutputDir={#ReleasePath}
 SetupIconFile={#SourcePath}..\Resources\art\icon256.ico
 UninstallDisplayName={#MyAppName}
-UninstallDisplayIcon={app}\Telegram.exe
+UninstallDisplayIcon={app}\opengram.exe
 Compression=lzma
 SolidCompression=yes
 DisableStartupPrompt=yes
@@ -38,11 +38,11 @@ SignTool=sha256
 
 #ifndef MyOutputBaseFilename
   #if MyBuildTarget == "winarm"
-    #define MyOutputBaseFilename "tsetup-arm64." + MyAppVersionFull
+    #define MyOutputBaseFilename "opengram-arm64-setup." + MyAppVersionFull
   #elif MyBuildTarget == "win64"
-    #define MyOutputBaseFilename "tsetup-x64." + MyAppVersionFull
+    #define MyOutputBaseFilename "opengram-x64-setup." + MyAppVersionFull
   #else
-    #define MyOutputBaseFilename "tsetup." + MyAppVersionFull
+    #define MyOutputBaseFilename "opengram-setup." + MyAppVersionFull
   #endif
 #endif
 OutputBaseFilename={#MyOutputBaseFilename}
@@ -78,7 +78,7 @@ Name: "ua";      MessagesFile: "compiler:Languages\Ukrainian.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "{#ReleasePath}\Telegram.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReleasePath}\opengram.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ReleasePath}\Updater.exe"; DestDir: "{app}"; Flags: ignoreversion
 #if MyBuildTarget != "winarm"
 Source: "{#ReleasePath}\{#ModulesFolder}\d3d\d3dcompiler_47.dll"; DestDir: "{app}\{#ModulesFolder}\d3d"; Flags: ignoreversion
