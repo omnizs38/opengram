@@ -24,5 +24,10 @@ constexpr auto AppName = "opengram"_cs;
 constexpr auto AppFile = "opengram"_cs;
 constexpr auto AppVersion = 7003000;
 constexpr auto AppVersionStr = "7.3";
+// opengram: our own version is a build number, incremented once per release by
+// Telegram/build/opengram_release.py. The interface shows it as
+// "<OpengramBuild> (<Telegram Desktop base version>)", for example "1 (7.3.0)",
+// and the version link opens the release page of that exact build.
+constexpr auto OpengramBuild = 1;
 constexpr auto AppBetaVersion = false;
 constexpr auto AppAlphaVersion = TDESKTOP_ALPHA_VERSION;

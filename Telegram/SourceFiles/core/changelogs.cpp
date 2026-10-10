@@ -113,7 +113,7 @@ void Changelogs::addLocalLogs() {
 		const auto text = tr::lng_new_version_wrap(
 			tr::now,
 			lt_version,
-			QString::fromLatin1(AppVersionStr),
+			OpengramVersionText(),
 			lt_changes,
 			tr::lng_new_version_minor(tr::now),
 			lt_link,
@@ -165,6 +165,13 @@ QString FormatVersionPrecise(int version) {
 	return QString::number(version / 1000000)
 		+ '.' + QString::number((version % 1000000) / 1000)
 		+ '.' + QString::number(version % 1000);
+}
+
+QString OpengramVersionText() {
+	return QString::number(OpengramBuild)
+		+ u" ("_q
+		+ FormatVersionPrecise(AppVersion)
+		+ u")"_q;
 }
 
 } // namespace Core

@@ -1298,7 +1298,10 @@ bool Application::openInternalUrl(const QString &url, QVariant context) {
 }
 
 QString Application::changelogLink() const {
-	return u"https://github.com/omnizs38/opengram/blob/opengram/changelog.txt"_q;
+	// opengram keeps its version history in GitHub releases, one release per
+	// build number, so a version link opens the release of that exact build.
+	return u"https://github.com/omnizs38/opengram/releases/tag/v%1"_q
+		.arg(OpengramBuild);
 }
 
 bool Application::openCustomUrl(
