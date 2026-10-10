@@ -147,7 +147,3 @@ replaceInFile(scriptPath + '/../Resources/winrc/Telegram.rc', rcReplaces)
 print('Patching Updater.rc...')
 replaceInFile(scriptPath + '/../Resources/winrc/Updater.rc', rcReplaces)
 
-print('Patching appxmanifest.xml...')
-replaceInFile(scriptPath + '/../Resources/uwp/AppX/AppxManifest.xml', [
-  [ r'( Version=)"\d+\.\d+\.\d+\.\d+"', r'\g<1>"' + withdot + '"' ],
-])

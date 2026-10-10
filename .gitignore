@@ -40,11 +40,6 @@ xcuserdata
 parts
 prime
 stage
-*.snap
-.snapcraft
-/snap/gui/*.png
-/snap/gui/*.desktop
-/snap/plugins/__pycache__
 __pycache__/
 *.pyc
 

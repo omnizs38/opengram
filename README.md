@@ -20,7 +20,6 @@ The latest version is available for
 * [Windows 7 and above (32 bit)](https://telegram.org/dl/desktop/win) ([portable](https://telegram.org/dl/desktop/win_portable))
 * [macOS 10.13 and above](https://telegram.org/dl/desktop/mac)
 * [Linux static build for 64 bit](https://telegram.org/dl/desktop/linux)
-* [Snap](https://snapcraft.io/telegram-desktop)
 * [Flatpak](https://flathub.org/apps/details/org.telegram.desktop)
 
 ## Old system versions

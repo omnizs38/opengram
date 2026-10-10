@@ -39,11 +39,11 @@ if os.path.isfile(officialTargetFile):
             officialTarget = line.strip()
 
 arch = ''
-if officialTarget in ['win', 'uwp']:
+if officialTarget == 'win':
     arch = 'x86'
-elif officialTarget in ['win64', 'uwp64']:
+elif officialTarget == 'win64':
     arch = 'x64'
-elif officialTarget in ['winarm', 'uwparm']:
+elif officialTarget == 'winarm':
     arch = 'arm'
 if not qt_version.resolve(arch):
     error('Unsupported platform.')
