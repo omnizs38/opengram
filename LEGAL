@@ -1,9 +1,10 @@
-This file is part of Telegram Desktop,
-the official desktop application for the Telegram messaging service.
+This file is part of opengram, an unofficial fork of Telegram Desktop,
+the desktop application for the Telegram messaging service.
 
 Copyright (c) 2014-2026 The Telegram Desktop Authors.
+Modifications Copyright (c) 2026 opengram contributors.
 
-Telegram Desktop is free software: you can redistribute it and/or modify
+opengram is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
@@ -16,6 +17,8 @@ GNU General Public License for more details.
 In addition, as a special exception, the copyright holders give permission
 to link the code of portions of this program with the OpenSSL library.
 
-More information about the Telegram project: https://telegram.org
+opengram is an independent project: it is not affiliated with, endorsed by,
+or sponsored by Telegram. Telegram is a trademark of its respective owner.
 
-Full license: https://github.com/telegramdesktop/tdesktop/blob/master/LICENSE
+More information about Telegram: https://telegram.org
+Full license: https://github.com/omnizs38/opengram/blob/opengram/LICENSE
