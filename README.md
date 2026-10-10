@@ -1,49 +1,47 @@
-# [Telegram Desktop][telegram_desktop] – Official Messenger
+# opengram
 
-This is the complete source code and the build instructions for the official [Telegram][telegram] messenger desktop client, based on the [Telegram API][telegram_api] and the [MTProto][telegram_proto] secure protocol.
+An unofficial, lighter fork of [Telegram Desktop][telegram_desktop] — a free and open-source
+desktop client for [Telegram][telegram], built on the [Telegram API][telegram_api] and the
+[MTProto][telegram_proto] secure protocol.
 
-[![Version](https://badge.fury.io/gh/telegramdesktop%2Ftdesktop.svg)](https://github.com/telegramdesktop/tdesktop/releases)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/Windows./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/MacOS./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/Linux./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Built with Depot](https://img.shields.io/badge/Built%20with-Depot.dev-46A75A)](https://depot.dev)
+opengram is an independent project. It is **not affiliated with, endorsed by or sponsored by
+Telegram**, and it is not an official Telegram client. Telegram is a trademark of its
+respective owner.
 
-[![Preview of Telegram Desktop][preview_image]][preview_image_url]
+## Status
 
-The source code is published under GPLv3 with OpenSSL exception, the license is available [here][license].
+Early stage: there are no builds yet. The first release is being prepared and will be published
+in [Releases][releases]. opengram is currently based on Telegram Desktop 7.3.0.
 
-## Supported systems
+## What is different from Telegram Desktop
 
-The latest version is available for
+* **Its own identity.** opengram uses a separate application id, config folder and autostart
+  entry, so it can be installed and run next to Telegram Desktop without touching its profile.
+* **No telemetry.** Crash reports and usage events are not sent anywhere. Auto-update is kept
+  and checks this repository's releases.
+* **Crash reports are yours to send.** After a crash opengram shows the log with a copy button
+  and a button that opens a pre-filled [GitHub issue][issues]. Nothing is uploaded automatically.
+* **A de-branded interface.** Window titles, menus, the About box and the update checker talk
+  about opengram, not about the application it was forked from.
+* **Less packaging.** Snap, UWP and the upstream release tooling are removed.
 
-* [Windows 7 and above (64 bit)](https://telegram.org/dl/desktop/win64) ([portable](https://telegram.org/dl/desktop/win64_portable))
-* [Windows 7 and above (32 bit)](https://telegram.org/dl/desktop/win) ([portable](https://telegram.org/dl/desktop/win_portable))
-* [macOS 10.13 and above](https://telegram.org/dl/desktop/mac)
-* [Linux static build for 64 bit](https://telegram.org/dl/desktop/linux)
-* [Flatpak](https://flathub.org/apps/details/org.telegram.desktop)
+Planned: focus mode, split view (parallel chats in tabs) and a command palette.
 
-## Old system versions
+## Building
 
-Version **4.9.9** was the last that supports older systems
+opengram builds for Windows (64-bit), macOS and GNU/Linux.
 
-* [macOS 10.12](https://updates.tdesktop.com/tmac/tsetup.4.9.9.dmg)
-* [Linux with glibc < 2.28 static build](https://updates.tdesktop.com/tlinux/tsetup.4.9.9.tar.xz)
+* [Windows][win]
+* [macOS][mac]
+* [GNU/Linux using Docker][linux]
 
-Version **2.4.4** was the last that supports older systems
-
-* [OS X 10.10 and 10.11](https://updates.tdesktop.com/tosx/tsetup-osx.2.4.4.dmg)
-* [Linux static build for 32 bit](https://updates.tdesktop.com/tlinux32/tsetup32.2.4.4.tar.xz)
-
-Version **1.8.15** was the last that supports older systems
-
-* [Windows XP and Vista](https://updates.tdesktop.com/tsetup/tsetup.1.8.15.exe) ([portable](https://updates.tdesktop.com/tsetup/tportable.1.8.15.zip))
-* [OS X 10.8 and 10.9](https://updates.tdesktop.com/tmac/tsetup.1.8.15.dmg)
-* [OS X 10.6 and 10.7](https://updates.tdesktop.com/tmac32/tsetup32.1.8.15.dmg)
+You need your own `api_id` and `api_hash` — the build fails without them. See
+[obtaining API credentials][api_credentials].
 
 ## Third-party
 
 * Qt 6 ([LGPL](http://doc.qt.io/qt-6/lgpl.html)) and Qt 5.15 ([LGPL](http://doc.qt.io/qt-5/lgpl.html)) slightly patched
-* OpenSSL 3.2.1 ([Apache License 2.0](https://openssl-library.org/source/license/apache-license-2.0.txt))
+* OpenSSL 3.5.9 ([Apache License 2.0](https://openssl-library.org/source/license/apache-license-2.0.txt))
 * WebRTC ([New BSD License](https://github.com/desktop-app/tg_owt/blob/master/LICENSE))
 * zlib ([zlib License](http://www.zlib.net/zlib_license.html))
 * LZMA SDK 9.20 ([public domain](http://www.7-zip.org/sdk.html))
@@ -68,33 +66,20 @@ Version **1.8.15** was the last that supports older systems
 * zxcvbn-c ([MIT License](https://github.com/tsyrogit/zxcvbn-c/blob/master/LICENSE.txt))
 * FrequencyWords by Hermit Dave ([Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/))
 
-## Build instructions
+## License
 
-* [Windows (32-bit and 64-bit)][win]
-* [macOS][mac]
-* [GNU/Linux using Docker][linux]
+GNU GPLv3 with an OpenSSL exception. See [LICENSE][license] and [LEGAL][legal].
 
 [//]: # (LINKS)
 [telegram]: https://telegram.org
-[telegram_desktop]: https://desktop.telegram.org
+[telegram_desktop]: https://github.com/telegramdesktop/tdesktop
 [telegram_api]: https://core.telegram.org
 [telegram_proto]: https://core.telegram.org/mtproto
+[api_credentials]: docs/api_credentials.md
+[releases]: https://github.com/omnizs38/opengram/releases
+[issues]: https://github.com/omnizs38/opengram/issues/new
 [license]: LICENSE
+[legal]: LEGAL
 [win]: docs/building-win.md
 [mac]: docs/building-mac.md
 [linux]: docs/building-linux.md
-[preview_image]: https://github.com/telegramdesktop/tdesktop/blob/dev/docs/assets/preview.png "Preview of Telegram Desktop"
-[preview_image_url]: https://raw.githubusercontent.com/telegramdesktop/tdesktop/dev/docs/assets/preview.png
-
-## Thanks to
-
-<a href="https://depot.dev">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-light.svg">
-    <img alt="Depot" src="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-light.svg" width="150">
-  </picture>
-</a>
-
-CI infrastructure sponsored by [Depot](https://depot.dev) — fast GitHub Actions runners.
-
