@@ -12,12 +12,12 @@ You will require **api_id** and **api_hash** to access the Telegram API servers.
 
 Install [poetry](https://python-poetry.org), go to ***BuildPath*** and run
 
-    git clone --recursive https://github.com/telegramdesktop/tdesktop.git
-    ./tdesktop/Telegram/build/prepare/linux.sh
+    git clone --recursive https://github.com/omnizs38/opengram.git
+    ./opengram/Telegram/build/prepare/linux.sh
 
 ### Building the project
 
-Go to ***BuildPath*/tdesktop** and run (using [your **api_id** and **api_hash**](#obtain-your-api-credentials))
+Go to ***BuildPath*/opengram** and run (using [your **api_id** and **api_hash**](#obtain-your-api-credentials))
 
     docker run --rm -it \
         -u $(id -u) \
