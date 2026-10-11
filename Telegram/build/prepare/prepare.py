@@ -62,6 +62,7 @@ optionsList = [
     'qt6',
     'skip-release',
     'skip-debug',
+    'dump-syms',
     'build-stackwalk',
     'qt-asserts',
 ]
@@ -321,6 +322,8 @@ def filterByPlatform(commands):
                 inscope = inscope and 'qt-asserts' in options
             if 'skipdebug' in scopes:
                 inscope = inscope and 'skip-debug' in options
+            if 'dumpsyms' in scopes:
+                inscope = inscope and 'dump-syms' in options
             skip = inscope if m.group(1) == '!' else not inscope
         elif not skip and not re.match(r'\s*#', command):
             if m and m.group(2) == 'version':
@@ -1512,6 +1515,9 @@ depends:python/Scripts/activate.bat
     ninja -C out/Debug%FolderPostfix% common crash_generation_client exception_handler
 release:
     ninja -C out/Release%FolderPostfix% common crash_generation_client exception_handler
+# dump_syms only symbolicates dumps for the upstream crash server and needs the
+# ATL and DIA SDK to build, so it is built only with the 'dump-syms' option.
+dumpsyms_win_release:
     cd tools\\windows\\dump_syms
     gyp dump_syms.gyp --format=msvs
     msbuild -m dump_syms.vcxproj /property:Configuration=Release /property:Platform="x64" %ToolsetProp%

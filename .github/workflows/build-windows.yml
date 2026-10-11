@@ -133,7 +133,9 @@ jobs:
           )
           rem skip-debug: we only ever ship Release builds, so the static
           rem debug Qt is dead weight and roughly doubles this job.
-          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat" skip-debug
+          rem silent: rebuild stale library stages instead of waiting for the
+          rem interactive "rebuild this stage?" prompt, which would hang here.
+          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat" skip-debug silent
           if errorlevel 1 exit /b 1
 
       - name: Report library size
