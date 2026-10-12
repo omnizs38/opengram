@@ -236,6 +236,10 @@ jobs:
       - name: Build opengram
         shell: cmd
         env:
+          # CMake enables bare /MP, which otherwise uses every logical CPU.
+          # _CL_ is appended after command-line flags, so /MP2 wins over /MP.
+          # Keep this local to the app build; prepared libraries are unchanged.
+          _CL_: /MP2
           VS_PATH: ${{ steps.paths.outputs.vs }}
           BUILD_PATH: ${{ steps.paths.outputs.build }}
           REPO: ${{ steps.paths.outputs.repo }}
@@ -250,7 +254,9 @@ jobs:
           cd /d "%BUILD_PATH%\%REPO%\Telegram"
           call configure.bat x64 -D TDESKTOP_API_ID=%API_ID% -D TDESKTOP_API_HASH=%API_HASH%
           if errorlevel 1 exit /b 1
-          cmake --build "%BUILD_PATH%\%REPO%\out" --config Release --parallel
+          rem Limit MSBuild as well as cl.exe: /MP alone does not cap projects.
+          rem One project and two compiler workers avoid exhausting PCH memory.
+          cmake --build "%BUILD_PATH%\%REPO%\out" --config Release --parallel 1
           if errorlevel 1 exit /b 1
 
       - name: Show the built files
