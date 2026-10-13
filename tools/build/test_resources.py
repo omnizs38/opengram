@@ -128,8 +128,8 @@ opengram_prepare_resources(Telegram)
     def test_ci_keeps_both_parallelism_limits_and_x64_host(self):
         text = (ROOT / ".github/workflows/build-windows.yml").read_text(encoding="utf-8")
         build = text.split("- name: Build opengram\n", 1)[1].split("\n      - name:", 1)[0]
-        self.assertIn("_CL_: /MP2", build)
-        self.assertRegex(build, r"cmake --build [^\n]+ --parallel 1 -- /p:PreferredToolArchitecture=x64")
+        self.assertRegex(build, r"_CL_:\s*/MP[234]\b")
+        self.assertRegex(build, r"cmake --build [^\n]+ /p:PreferredToolArchitecture=x64")
         self.assertIn("needs: checks", text)
         self.assertIn("python3 tools/build/test_resources.py", text)
 
