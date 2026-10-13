@@ -2682,6 +2682,8 @@ if (MSVC)
     endif()
 endif()
 
+include(cmake/opengram_prepare_resources.cmake)
+opengram_prepare_resources(Telegram)
 target_prepare_qrc(Telegram)
 
 if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE AND NOT build_macstore AND NOT build_winstore)

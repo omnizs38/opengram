@@ -16,10 +16,19 @@ env:
   CACHE_VERSION: 2
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check resource memory safeguards
+        run: python3 tools/build/test_resources.py
+
   # Qt is built from source here and that is by far the longest stage, so it
   # gets a job of its own: the six hour limit applies per job, and a failure in
   # the app build below does not throw away the prepared libraries.
   prepare:
+    needs: checks
     runs-on: windows-latest
     timeout-minutes: 350
 
@@ -233,6 +242,13 @@ jobs:
           restore-keys: |
             win64-${{ env.CACHE_VERSION }}-
 
+      - name: Report memory before compilation
+        shell: pwsh
+        run: |
+          $memory = Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory
+          Write-Host ("Available RAM: {0:N0} MiB; committed: {1:N1} GiB; commit limit: {2:N1} GiB" -f `
+            $memory.AvailableMBytes, ($memory.CommittedBytes / 1GB), ($memory.CommitLimit / 1GB))
+
       - name: Build opengram
         shell: cmd
         env:
@@ -255,8 +271,9 @@ jobs:
           call configure.bat x64 -D TDESKTOP_API_ID=%API_ID% -D TDESKTOP_API_HASH=%API_HASH%
           if errorlevel 1 exit /b 1
           rem Limit MSBuild as well as cl.exe: /MP alone does not cap projects.
-          rem One project and two compiler workers avoid exhausting PCH memory.
-          cmake --build "%BUILD_PATH%\%REPO%\out" --config Release --parallel 1
+          rem Bound peak memory: one project, at most two compiler workers.
+          rem Explicitly select the 64-bit compiler host, not just an x64 target.
+          cmake --build "%BUILD_PATH%\%REPO%\out" --config Release --parallel 1 -- /p:PreferredToolArchitecture=x64
           if errorlevel 1 exit /b 1
 
       - name: Show the built files
