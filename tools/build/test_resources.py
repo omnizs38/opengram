@@ -133,6 +133,13 @@ opengram_prepare_resources(Telegram)
         self.assertIn("needs: checks", text)
         self.assertIn("python3 tools/build/test_resources.py", text)
 
+    def test_ci_preserves_msvc_flags_across_msys2(self):
+        text = (ROOT / ".github/workflows/build-windows.yml").read_text(encoding="utf-8")
+        # Both library preparation and application builds inherit this setting.
+        workflow_env = text.split("\njobs:", 1)[0]
+        self.assertIn("MSYS2_ENV_CONV_EXCL: '_CL_;CL;_LINK_;LINK'", workflow_env)
+        self.assertNotIn("MSYS2_ARG_CONV_EXCL:", workflow_env)
+
     def test_finalization_runs_after_generated_resources(self):
         text = (ROOT / "Telegram/CMakeLists.txt").read_text(encoding="utf-8")
         self.assertLess(text.index("include(cmake/generate_models.cmake)"),

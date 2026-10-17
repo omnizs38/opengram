@@ -6,6 +6,9 @@ on:
 env:
   # Bump this to throw away the cached Libraries directory.
   CACHE_VERSION: 3
+  # MSVC options are not paths. Keep MSYS2 from rewriting /MP4 into .../msys64/MP4.
+  # Exclude only compiler/linker variables; normal path conversion must stay enabled.
+  MSYS2_ENV_CONV_EXCL: '_CL_;CL;_LINK_;LINK'
 
 jobs:
   checks:
