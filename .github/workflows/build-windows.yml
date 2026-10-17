@@ -14,7 +14,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check resource memory safeguards
-        run: python3 tools/build/test_resources.py
+        run: |
+          mkdir -p "$RUNNER_TEMP/opengram-logs"
+          python3 tools/build/test_resources.py > "$RUNNER_TEMP/opengram-logs/checks.log" 2>&1 || {
+            python3 tools/build/show_failure.py "$RUNNER_TEMP/opengram-logs/checks.log"
+            exit 1
+          }
+          python3 tools/build/test_show_failure.py
+      - name: Upload check failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengram-checks-log
+          path: ${{ runner.temp }}/opengram-logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   prepare:
     needs: checks
@@ -96,6 +110,7 @@ jobs:
           key: win64-${{ env.CACHE_VERSION }}-${{ hashFiles('Telegram/build/prepare/prepare.py', '.gitmodules') }}
 
       - name: Prepare libraries (Qt and third party)
+        id: prepare-libraries
         if: steps.cache-libs.outputs.cache-hit != 'true'
         shell: cmd
         env:
@@ -108,8 +123,22 @@ jobs:
           if errorlevel 1 (
             call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
           )
-          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat" skip-debug silent
-          if errorlevel 1 exit /b 1
+          if not exist "%RUNNER_TEMP%\opengram-logs" mkdir "%RUNNER_TEMP%\opengram-logs"
+          echo Preparing libraries. Full output is being saved to prepare.log.
+          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat" skip-debug silent > "%RUNNER_TEMP%\opengram-logs\prepare.log" 2>&1
+          if errorlevel 1 (
+            python "%BUILD_PATH%\%REPO%\tools\build\show_failure.py" "%RUNNER_TEMP%\opengram-logs\prepare.log"
+            exit /b 1
+          )
+
+      - name: Upload library preparation failure log
+        if: failure() && steps.prepare-libraries.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengram-prepare-log
+          path: ${{ runner.temp }}/opengram-logs/prepare.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Clean temporary build artifacts inside Libraries before caching
         if: steps.cache-libs.outputs.cache-hit != 'true'
@@ -200,6 +229,7 @@ jobs:
             $memory.AvailableMBytes, ($memory.CommittedBytes / 1GB), ($memory.CommitLimit / 1GB))
 
       - name: Build opengram
+        id: build-app
         shell: cmd
         env:
           # /MP3: 3 parallel cl.exe threads — optimal balance for 16 GB RAM (prevents OOM while keeping CPU near 100%)
@@ -225,13 +255,30 @@ jobs:
             call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
           )
           cd /d "%BUILD_PATH%\%REPO%\Telegram"
-          call configure.bat x64 -D TDESKTOP_API_ID=%API_ID% -D TDESKTOP_API_HASH=%API_HASH%
-          if errorlevel 1 exit /b 1
+          if not exist "%RUNNER_TEMP%\opengram-logs" mkdir "%RUNNER_TEMP%\opengram-logs"
+          echo Configuring opengram. Full output is being saved to build.log.
+          call configure.bat x64 -D TDESKTOP_API_ID=%API_ID% -D TDESKTOP_API_HASH=%API_HASH% > "%RUNNER_TEMP%\opengram-logs\build.log" 2>&1
+          if errorlevel 1 (
+            python "%BUILD_PATH%\%REPO%\tools\build\show_failure.py" "%RUNNER_TEMP%\opengram-logs\build.log"
+            exit /b 1
+          )
 
           rem Use /m:2 at the MSBuild level to build smaller libraries (lib_base, lib_ui, etc.) in parallel,
           rem while EnforceProcessCountAcrossBuilds ensures no more than 3 total cl.exe processes run at once.
-          cmake --build "%BUILD_PATH%\%REPO%\out" --config Release -- /m:2 /p:PreferredToolArchitecture=x64 /p:UseMultiToolTask=true /p:EnforceProcessCountAcrossBuilds=true /p:MultiProcMaxCount=3 /v:minimal
-          if errorlevel 1 exit /b 1
+          cmake --build "%BUILD_PATH%\%REPO%\out" --config Release -- /m:2 /p:PreferredToolArchitecture=x64 /p:UseMultiToolTask=true /p:EnforceProcessCountAcrossBuilds=true /p:MultiProcMaxCount=3 /v:minimal >> "%RUNNER_TEMP%\opengram-logs\build.log" 2>&1
+          if errorlevel 1 (
+            python "%BUILD_PATH%\%REPO%\tools\build\show_failure.py" "%RUNNER_TEMP%\opengram-logs\build.log"
+            exit /b 1
+          )
+
+      - name: Upload build failure log
+        if: failure() && steps.build-app.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengram-build-log
+          path: ${{ runner.temp }}/opengram-logs/build.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Show the built files
         shell: pwsh
