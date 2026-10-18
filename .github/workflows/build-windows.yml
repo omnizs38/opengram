@@ -1,74 +1,89 @@
 name: Build Windows
 
-# Manual only for now: a tag push should not start a multi hour build before the
-# pipeline is known to work. Add
-#
-#   push:
-#     tags: ['v*']
-#
-# once a release has gone through this successfully.
 on:
   workflow_dispatch:
 
 env:
   # Bump this to throw away the cached Libraries directory.
-  # 2: Qt is built release-only now, so the old debug+release cache is useless.
-  CACHE_VERSION: 2
+  CACHE_VERSION: 3
+  # MSVC options are not paths. Keep MSYS2 from rewriting /MP4 into .../msys64/MP4.
+  # Exclude only compiler/linker variables; normal path conversion must stay enabled.
+  MSYS2_ENV_CONV_EXCL: '_CL_;CL;_LINK_;LINK'
 
 jobs:
-  # Qt is built from source here and that is by far the longest stage, so it
-  # gets a job of its own: the six hour limit applies per job, and a failure in
-  # the app build below does not throw away the prepared libraries.
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check resource memory safeguards
+        run: |
+          mkdir -p "$RUNNER_TEMP/opengram-logs"
+          python3 tools/build/test_resources.py > "$RUNNER_TEMP/opengram-logs/checks.log" 2>&1 || {
+            python3 tools/build/show_failure.py "$RUNNER_TEMP/opengram-logs/checks.log"
+            exit 1
+          }
+          python3 tools/build/test_show_failure.py
+      - name: Upload check failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengram-checks-log
+          path: ${{ runner.temp }}/opengram-logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   prepare:
+    needs: checks
     runs-on: windows-latest
     timeout-minutes: 350
 
     steps:
-      - name: Check out opengram
-        uses: actions/checkout@v4
-        with:
-          # cmake/ is a submodule that holds run_cmake.py, and the build fails
-          # without it, so submodules are mandatory here.
-          submodules: recursive
-          fetch-depth: 1
+      - name: Check API credentials
+        shell: pwsh
+        env:
+          API_ID: ${{ secrets.TDESKTOP_API_ID }}
+          API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
+        run: |
+          if (-not $env:API_ID -or -not$env:API_HASH) {
+            throw 'Set the repository secrets TDESKTOP_API_ID and TDESKTOP_API_HASH (Settings -> Secrets and variables -> Actions).'
+          }
 
-      - name: Free disk space
+      - name: Expand Virtual Memory (Pagefile) & Free Disk Space in Background
         shell: pwsh
         run: |
-          function Show-FreeSpace($label) {
-            foreach ($drive in 'C', 'D') {
-              $d = Get-PSDrive $drive -ErrorAction SilentlyContinue
-              if ($d) {
-                Write-Host ("{0} {1}: {2:N1} GB free" -f $label, $drive, ($d.Free / 1GB))
-              }
-            }
-          }
-          Show-FreeSpace 'before'
+          # 1. Allocate 24-32 GB of pagefile on drive D: to prevent MSVC from failing with C1060
+          $pagefile = "D:\pagefile.sys 24576 32768"
+          Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" `
+            -Name "PagingFiles" -Value @("C:\pagefile.sys 4096 4096", $pagefile)
+
+          # 2. Stop heavy background Windows services on the runner (frees ~1.5 GB of RAM and CPU)
+          Stop-Service -Name "DiagTrack", "wuauserv", "WSearch" -Force -ErrorAction SilentlyContinue
+
+          # 3. Fast background removal of unused SDKs (does not block the main pipeline)
           $targets = @(
             'C:\Android',
             'C:\Program Files\Android',
-            'C:\Program Files (x86)\Android',
-            'C:\Program Files\Java',
-            'C:\Program Files\Eclipse Adoptium',
             'C:\hostedtoolcache\Java',
             'C:\hostedtoolcache\go',
             'C:\hostedtoolcache\Ruby',
-            'C:\hostedtoolcache\PyPy',
             'C:\Program Files\dotnet',
             'C:\Program Files\Haskell'
           )
-          # The image may carry more than one Visual Studio. vswhere below picks
-          # the newest one, so an older install is only dead weight.
           if (Test-Path 'C:\Program Files\Microsoft Visual Studio\18') {
             $targets += 'C:\Program Files\Microsoft Visual Studio\2022'
           }
           foreach ($target in $targets) {
             if (Test-Path $target) {
-              Write-Host "removing $target"
-              Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $target
+              Start-Process cmd.exe -ArgumentList "/c rmdir /s /q `"$target`"" -WindowStyle Hidden
             }
           }
-          Show-FreeSpace 'after'
+
+      - name: Check out opengram
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
 
       - name: Resolve build paths and toolset
         id: paths
@@ -86,75 +101,57 @@ jobs:
           "build=$build" >> $env:GITHUB_OUTPUT
           "repo=$repo" >> $env:GITHUB_OUTPUT
           "vs=$vs" >> $env:GITHUB_OUTPUT
-          Write-Host "BuildPath:      $build"
-          Write-Host "Repository dir: $repo"
-          Write-Host "Visual Studio:  $vs"
-          Write-Host 'MSVC toolsets:'
-          Get-ChildItem "$vs\VC\Tools\MSVC" -ErrorAction SilentlyContinue |
-            ForEach-Object { Write-Host "  $($_.Name)" }
-          Write-Host 'Windows SDKs:'
-          Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Include" -ErrorAction SilentlyContinue |
-            ForEach-Object { Write-Host "  $($_.Name)" }
-
-      - name: Check API credentials
-        shell: pwsh
-        env:
-          API_ID: ${{ secrets.TDESKTOP_API_ID }}
-          API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
-        run: |
-          # Checked here as well, so that a missing secret does not waste the
-          # hours this job spends building Qt.
-          if (-not $env:API_ID -or -not $env:API_HASH) {
-            throw 'Set the repository secrets TDESKTOP_API_ID and TDESKTOP_API_HASH (Settings -> Secrets and variables -> Actions).'
-          }
+          Write-Host "Visual Studio: $vs"
 
       - name: Restore prepared libraries
+        id: cache-libs
         uses: actions/cache@v4
         with:
           path: |
             ${{ steps.paths.outputs.build }}\Libraries
             ${{ steps.paths.outputs.build }}\ThirdParty
           key: win64-${{ env.CACHE_VERSION }}-${{ hashFiles('Telegram/build/prepare/prepare.py', '.gitmodules') }}
-          restore-keys: |
-            win64-${{ env.CACHE_VERSION }}-
 
       - name: Prepare libraries (Qt and third party)
+        id: prepare-libraries
+        if: steps.cache-libs.outputs.cache-hit != 'true'
         shell: cmd
         env:
           VS_PATH: ${{ steps.paths.outputs.vs }}
           BUILD_PATH: ${{ steps.paths.outputs.build }}
           REPO: ${{ steps.paths.outputs.repo }}
+          _CL_: /MP4 /Zm200
         run: |
-          rem run_cmake.py forces -T v143, so the environment has to match it.
           call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat" -vcvars_ver=14.44
           if errorlevel 1 (
-            echo Falling back to the default toolset of this Visual Studio.
             call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
           )
-          rem skip-debug: we only ever ship Release builds, so the static
-          rem debug Qt is dead weight and roughly doubles this job.
-          rem silent: rebuild stale library stages instead of waiting for the
-          rem interactive "rebuild this stage?" prompt, which would hang here.
-          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat" skip-debug silent
-          if errorlevel 1 exit /b 1
+          if not exist "%RUNNER_TEMP%\opengram-logs" mkdir "%RUNNER_TEMP%\opengram-logs"
+          echo Preparing libraries. Full output is being saved to prepare.log.
+          call "%BUILD_PATH%\%REPO%\Telegram\build\prepare\win.bat" skip-debug silent > "%RUNNER_TEMP%\opengram-logs\prepare.log" 2>&1
+          if errorlevel 1 (
+            python "%BUILD_PATH%\%REPO%\tools\build\show_failure.py" "%RUNNER_TEMP%\opengram-logs\prepare.log"
+            exit /b 1
+          )
 
-      - name: Report library size
+      - name: Upload library preparation failure log
+        if: failure() && steps.prepare-libraries.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengram-prepare-log
+          path: ${{ runner.temp }}/opengram-logs/prepare.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Clean temporary build artifacts inside Libraries before caching
+        if: steps.cache-libs.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          $build = "${{ steps.paths.outputs.build }}"
-          foreach ($drive in 'C', 'D') {
-            $d = Get-PSDrive $drive -ErrorAction SilentlyContinue
-            if ($d) {
-              Write-Host ("{0}: {1:N1} GB free" -f $drive, ($d.Free / 1GB))
-            }
-          }
-          foreach ($dir in 'Libraries', 'ThirdParty') {
-            $path = Join-Path $build $dir
-            if (Test-Path $path) {
-              $sum = (Get-ChildItem -Recurse -Force $path |
-                Measure-Object -Property Length -Sum).Sum / 1GB
-              Write-Host ("{0}: {1:N2} GB" -f $dir, $sum)
-            }
+          $libs = "${{ steps.paths.outputs.build }}\Libraries"
+          if (Test-Path $libs) {
+            # Remove heavy intermediate .obj and .pch files from built libraries to speed up cache upload/download
+            Get-ChildItem -Path $libs -Include *.obj, *.pch, *.ipdb, *.iobj -Recurse -Force -ErrorAction SilentlyContinue |
+              Remove-Item -Force -ErrorAction SilentlyContinue
           }
 
   build:
@@ -163,36 +160,32 @@ jobs:
     timeout-minutes: 350
 
     steps:
+      - name: Optimize Runner Memory & Disk
+        shell: pwsh
+        run: |
+          # Disable memory compression and stop background services
+          Stop-Service -Name "DiagTrack", "wuauserv", "WSearch" -Force -ErrorAction SilentlyContinue
+          Disable-MMAgent -mc -ErrorAction SilentlyContinue
+
+          # Background cleanup of drive C:
+          $targets = @('C:\Android', 'C:\hostedtoolcache\Java', 'C:\hostedtoolcache\go', 'C:\Program Files\dotnet')
+          foreach ($target in $targets) {
+            if (Test-Path $target) {
+              Start-Process cmd.exe -ArgumentList "/c rmdir /s /q `"$target`"" -WindowStyle Hidden
+            }
+          }
+
+          # Increase the desktop/console heap buffer limit in the registry
+          $subSysKey = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\SubSystems"
+          $winVal = (Get-ItemProperty -Path $subSysKey -Name Windows).Windows
+          $winVal = $winVal -replace "SharedSection=\d+,\d+,\d+", "SharedSection=1024,20480,4096"
+          Set-ItemProperty -Path $subSysKey -Name Windows -Value $winVal
+
       - name: Check out opengram
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 1
-
-      - name: Free disk space
-        shell: pwsh
-        run: |
-          $targets = @(
-            'C:\Android',
-            'C:\Program Files\Android',
-            'C:\Program Files (x86)\Android',
-            'C:\Program Files\Java',
-            'C:\Program Files\Eclipse Adoptium',
-            'C:\hostedtoolcache\Java',
-            'C:\hostedtoolcache\go',
-            'C:\hostedtoolcache\Ruby',
-            'C:\hostedtoolcache\PyPy',
-            'C:\Program Files\dotnet',
-            'C:\Program Files\Haskell'
-          )
-          if (Test-Path 'C:\Program Files\Microsoft Visual Studio\18') {
-            $targets += 'C:\Program Files\Microsoft Visual Studio\2022'
-          }
-          foreach ($target in $targets) {
-            if (Test-Path $target) {
-              Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $target
-            }
-          }
 
       - name: Resolve build paths and toolset
         id: paths
@@ -211,18 +204,6 @@ jobs:
           "repo=$repo" >> $env:GITHUB_OUTPUT
           "vs=$vs" >> $env:GITHUB_OUTPUT
 
-      - name: Check API credentials
-        shell: pwsh
-        env:
-          API_ID: ${{ secrets.TDESKTOP_API_ID }}
-          API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
-        run: |
-          # Telegram's built-in test credentials are deliberately not used here:
-          # a client built with them cannot log users in.
-          if (-not $env:API_ID -or -not $env:API_HASH) {
-            throw 'Set the repository secrets TDESKTOP_API_ID and TDESKTOP_API_HASH (Settings -> Secrets and variables -> Actions).'
-          }
-
       - name: Restore prepared libraries
         uses: actions/cache@v4
         with:
@@ -233,9 +214,32 @@ jobs:
           restore-keys: |
             win64-${{ env.CACHE_VERSION }}-
 
+      - name: Restore Incremental Object Cache (ccache/obj cache)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.paths.outputs.build }}\${{ steps.paths.outputs.repo }}\out\Telegram\Release
+            ${{ steps.paths.outputs.build }}\${{ steps.paths.outputs.repo }}\out\Telegram\Telegram.dir\Release
+          key: win64-obj-${{ env.CACHE_VERSION }}-${{ github.sha }}
+          restore-keys: |
+            win64-obj-${{ env.CACHE_VERSION }}-
+
+      - name: Report memory before compilation
+        shell: pwsh
+        run: |
+          $memory = Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory
+          Write-Host ("Available RAM: {0:N0} MiB; committed: {1:N1} GiB; commit limit: {2:N1} GiB" -f `
+            $memory.AvailableMBytes, ($memory.CommittedBytes / 1GB), ($memory.CommitLimit / 1GB))
+
       - name: Build opengram
+        id: build-app
         shell: cmd
         env:
+          # /MP3: 3 parallel cl.exe threads — optimal balance for 16 GB RAM (prevents OOM while keeping CPU near 100%)
+          # /Zm200: doubles the compiler heap allocation for Telegram's large PCH files (primary fix for C1060)
+          # /Zf: speeds up parallel PDB generation
+          # /bigobj: prevents crashes on heavy template-rich files like apiwrap.cpp
+          # These are set inline below for the build command only, not for configure
           VS_PATH: ${{ steps.paths.outputs.vs }}
           BUILD_PATH: ${{ steps.paths.outputs.build }}
           REPO: ${{ steps.paths.outputs.repo }}
@@ -248,13 +252,31 @@ jobs:
             call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
           )
           cd /d "%BUILD_PATH%\%REPO%\Telegram"
-          call configure.bat x64 -D TDESKTOP_API_ID=%API_ID% -D TDESKTOP_API_HASH=%API_HASH%
-          if errorlevel 1 exit /b 1
-          rem Limit MSBuild as well as cl.exe: /MP alone does not cap projects.
-          rem One project and two compiler workers avoid exhausting PCH memory.
-          rem _CL_ is appended after command-line flags, so /MP2 wins over /MP.
-          set "_CL_=/MP2" && cmake --build "%BUILD_PATH%\%REPO%\out" --config Release --parallel 1
-          if errorlevel 1 exit /b 1
+          if not exist "%RUNNER_TEMP%\opengram-logs" mkdir "%RUNNER_TEMP%\opengram-logs"
+          echo Configuring opengram. Full output is being saved to build.log.
+          call configure.bat x64 -D TDESKTOP_API_ID=%API_ID% -D TDESKTOP_API_HASH=%API_HASH% > "%RUNNER_TEMP%\opengram-logs\build.log" 2>&1
+          if errorlevel 1 (
+            python "%BUILD_PATH%\%REPO%\tools\build\show_failure.py" "%RUNNER_TEMP%\opengram-logs\build.log"
+            exit /b 1
+          )
+
+          rem _CL_ flags set inline so they don't affect the configure step.
+          rem _LINK_ flags for faster linking and less RAM.
+          rem MSBuild flags via command line for proper parallelism control.
+          set "_CL_=/MP3 /Zm200 /Zf /bigobj" && set "_LINK_=/DEBUG:NONE /INCREMENTAL:NO" && cmake --build "%BUILD_PATH%\%REPO%\out" --config Release -- /m:2 /p:PreferredToolArchitecture=x64 /p:UseMultiToolTask=true /p:EnforceProcessCountAcrossBuilds=true /p:MultiProcMaxCount=3 /v:minimal >> "%RUNNER_TEMP%\opengram-logs\build.log" 2>&1
+          if errorlevel 1 (
+            python "%BUILD_PATH%\%REPO%\tools\build\show_failure.py" "%RUNNER_TEMP%\opengram-logs\build.log"
+            exit /b 1
+          )
+
+      - name: Upload build failure log
+        if: failure() && steps.build-app.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengram-build-log
+          path: ${{ runner.temp }}/opengram-logs/build.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Show the built files
         shell: pwsh

@@ -63,6 +63,39 @@ For `win64` (64-bit):
 * The solution and project keep the upstream name `Telegram`; the binary they produce is `opengram.exe`
 * The result opengram.exe will be located in **D:\TBuild\opengram\out\Debug** (and **Release**)
 
+### Compiler memory safeguards
+
+An `x64` target is not the same as a 64-bit compiler process. For a Release
+command-line build, use the x64 tools and cap both MSBuild project parallelism
+and MSVC source-file parallelism:
+
+```bat
+set "_CL_=/MP2"
+cmake --build ..\out --config Release --parallel 1 -- /p:PreferredToolArchitecture=x64
+```
+
+`_CL_` appends `/MP2` after the project's bare `/MP`. The equivalent Visual
+Studio IDE settings are one parallel project and two compiler processes.
+The CI workflow also reports available RAM and the system commit limit before
+compilation. C1060/C3859/C1076 indicate compiler memory exhaustion; they do not
+by themselves prove a memory leak in the running application.
+
+On Windows, all eligible `.qrc` sources on the `Telegram` target use Qt's
+two-pass big-resource compiler, including generated models and shaders. New
+resource bundles must be registered before `opengram_prepare_resources()` and
+have unique basenames. Resource data remains embedded in `opengram.exe`, while
+the small compiler stubs do not use the application's PCH. Other platforms keep
+their existing resource packaging.
+
+Run the lightweight routing checks without building Qt:
+
+```bat
+python tools\build\test_resources.py
+```
+
+Run that command from the repository root with CMake on `PATH`. These tests
+check CMake resource routing, not the final Windows binary or runtime leaks.
+
 ### Qt Visual Studio Tools
 
 For better debugging you may want to install Qt Visual Studio Tools:
