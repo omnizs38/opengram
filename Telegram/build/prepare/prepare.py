@@ -559,7 +559,7 @@ version: """ + (subprocess.run(['python', '-V'], capture_output=True, text=True,
 win:
     python -m venv python
     python\\Scripts\\activate.bat
-    pip install pywin32 six meson
+    pip install pywin32 six "meson>=1.7.0"
     deactivate
 """, 'ThirdParty')
 
